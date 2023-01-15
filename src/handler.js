@@ -66,12 +66,34 @@ const addBookHandler = (request, h) => {
   return response;
 };
 
-const getAllBooksHandler = () => ({
-  status: 'success',
-  data: {
-    books,
-  },
-});
+const getAllBooksHandler = (request, h) => {
+  const { name, reading, finished } = request.query;
+  let newbooks = books;
+
+  if (name !== undefined) {
+    newbooks = newbooks.filter((book) => book.name.toLowerCase().includes(name.toLowerCase()));
+  }
+
+  if (reading !== undefined) {
+    newbooks = newbooks.filter((book) => book.reading === !!Number(reading));
+  }
+
+  if (finished !== undefined) {
+    newbooks = newbooks.filter((book) => book.finished === !!Number(finished));
+  }
+
+  const response = h.response({
+    status: 'success',
+    data: {
+      books: newbooks.map((book) => ({
+        id: book.id,
+        name: book.name,
+        publisher: book.publisher,
+      })),
+    },
+  });
+  return response;
+};
 
 const getBookByIdHandler = (request, h) => {
   const { bookId } = request.params;
@@ -111,7 +133,7 @@ const editBookByIdHandler = (request, h) => {
 
   if (readPage > pageCount) {
     const response = h.response({
-      status: '400',
+      status: 'fail',
       message: 'Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount',
     });
     response.code(400);
@@ -119,10 +141,10 @@ const editBookByIdHandler = (request, h) => {
   }
 
   const { bookId } = request.params;
-  const id = books.filter((b) => b.id === bookId);
+  const id = books.filter((b) => b.id === bookId)[0];
 
   if (!id) {
-    const response = h.respone({
+    const response = h.response({
       status: 'fail',
       message: 'Gagal memperbarui buku. Id tidak ditemukan',
     });
@@ -131,7 +153,16 @@ const editBookByIdHandler = (request, h) => {
   }
 
   const updatedAt = new Date().toISOString();
-  const index = books.findIndex((i) => i.id === id);
+  const index = books.findIndex((i) => i.id === bookId);
+
+  if (index === undefined) {
+    const response = h.response({
+      status: 'fail',
+      message: 'Gagal memperbarui buku. Id tidak ditemukan',
+    });
+    response.code(400);
+    return response;
+  }
 
   books[index] = {
     ...books[index],
